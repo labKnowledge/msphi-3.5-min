@@ -2,7 +2,6 @@ import psutil
 import platform
 from flask import Flask, render_template_string
 import threading
-import time
 
 app = Flask(__name__)
 
@@ -18,10 +17,11 @@ HTML_TEMPLATE = """
             font-family: Arial, sans-serif;
             line-height: 1.6;
             padding: 20px;
-            background-color: #f0f0f0;
+            background-color: #1a1b26;
+            color: #a9b1d6;
         }
         h1, h2 {
-            color: #333;
+            color: #c0caf5;
             text-align: center;
         }
         .grid {
@@ -31,7 +31,7 @@ HTML_TEMPLATE = """
             margin-top: 20px;
         }
         .card {
-            background: #fff;
+            background: #24283b;
             border-radius: 8px;
             padding: 20px;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
@@ -39,7 +39,7 @@ HTML_TEMPLATE = """
         .card h3 {
             margin-top: 0;
             font-size: 18px;
-            color: #555;
+            color: #7aa2f7;
         }
         .card p {
             font-size: 24px;
@@ -48,26 +48,54 @@ HTML_TEMPLATE = """
         }
         .card .subtitle {
             font-size: 14px;
-            color: #888;
+            color: #565f89;
         }
-        .cpu { background-color: #FFD700; }
-        .memory { background-color: #87CEEB; }
-        .disk { background-color: #90EE90; }
-        .network { background-color: #D3D3D3; }
+        .cpu { border-left: 4px solid #ff9e64; }
+        .memory { border-left: 4px solid #7dcfff; }
+        .disk { border-left: 4px solid #9ece6a; }
+        .network { border-left: 4px solid #bb9af7; }
         #deviceInfo {
-            background-color: #ffffff;
+            background-color: #24283b;
             padding: 20px;
             border-radius: 8px;
             margin-bottom: 20px;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         }
-        #deviceInfo p {
-            margin: 5px 0;
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+        .info-item {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            background-color: #1a1b26;
+            border-radius: 6px;
+        }
+        .info-icon {
+            font-size: 24px;
+            margin-right: 10px;
+            color: #7aa2f7;
+        }
+        .info-content {
+            display: flex;
+            flex-direction: column;
+        }
+        .info-label {
+            font-size: 14px;
+            color: #565f89;
+        }
+        .info-value {
+            font-size: 16px;
+            font-weight: bold;
+            color: #c0caf5;
         }
         #updateTime {
             text-align: center;
             font-style: italic;
             margin-top: 20px;
+            color: #565f89;
         }
     </style>
 </head>
@@ -75,13 +103,51 @@ HTML_TEMPLATE = """
     <h1>Enhanced Real-time System Monitor</h1>
     
     <div id="deviceInfo">
-        <h2>Device Information</h2>
-        <p><strong>System:</strong> {{ system }}</p>
-        <p><strong>Node Name:</strong> {{ node_name }}</p>
-        <p><strong>Release:</strong> {{ release }}</p>
-        <p><strong>Version:</strong> {{ version }}</p>
-        <p><strong>Machine:</strong> {{ machine }}</p>
-        <p><strong>Processor:</strong> {{ processor }}</p>
+        <h2>Server Specifications</h2>
+        <div class="info-grid">
+            <div class="info-item">
+                <span class="info-icon">🖥️</span>
+                <div class="info-content">
+                    <span class="info-label">Operating System</span>
+                    <span class="info-value">{{ system }} {{ release }}</span>
+                </div>
+            </div>
+            <div class="info-item">
+                <span class="info-icon">🔢</span>
+                <div class="info-content">
+                    <span class="info-label">CPU</span>
+                    <span class="info-value">{{ processor }}</span>
+                </div>
+            </div>
+            <div class="info-item">
+                <span class="info-icon">💾</span>
+                <div class="info-content">
+                    <span class="info-label">Total Memory</span>
+                    <span class="info-value">{{ memory.total }} GB</span>
+                </div>
+            </div>
+            <div class="info-item">
+                <span class="info-icon">💽</span>
+                <div class="info-content">
+                    <span class="info-label">Disk Space</span>
+                    <span class="info-value">{{ disk.total }} GB</span>
+                </div>
+            </div>
+            <div class="info-item">
+                <span class="info-icon">🏠</span>
+                <div class="info-content">
+                    <span class="info-label">Hostname</span>
+                    <span class="info-value">{{ node_name }}</span>
+                </div>
+            </div>
+            <div class="info-item">
+                <span class="info-icon">🔌</span>
+                <div class="info-content">
+                    <span class="info-label">Network</span>
+                    <span class="info-value">{{ network_info }}</span>
+                </div>
+            </div>
+        </div>
     </div>
     
     <div class="grid">
@@ -94,7 +160,7 @@ HTML_TEMPLATE = """
         <div class="card memory">
             <h3>Memory</h3>
             <p id="memoryUsage">{{ memory.percent }}%</p>
-            <div class="subtitle" id="memoryDetails">{{ memory.used }} MB / {{ memory.total }} MB</div>
+            <div class="subtitle" id="memoryDetails">{{ memory.used }} GB / {{ memory.total }} GB</div>
         </div>
         <div class="card disk">
             <h3>Disk</h3>
@@ -117,7 +183,7 @@ HTML_TEMPLATE = """
                     document.getElementById('cpuUsage').textContent = data.cpu_usage + '%';
                     document.getElementById('cpuLoad').textContent = 'Load ' + data.cpu_load;
                     document.getElementById('memoryUsage').textContent = data.memory.percent + '%';
-                    document.getElementById('memoryDetails').textContent = data.memory.used + ' MB / ' + data.memory.total + ' MB';
+                    document.getElementById('memoryDetails').textContent = data.memory.used + ' GB / ' + data.memory.total + ' GB';
                     document.getElementById('diskUsage').textContent = data.disk.percent + '%';
                     document.getElementById('diskDetails').textContent = data.disk.used + ' GB / ' + data.disk.total + ' GB';
                     document.getElementById('networkUsage').textContent = '↓ ' + data.network.bytes_recv + ' MB ↑ ' + data.network.bytes_sent + ' MB';
@@ -145,7 +211,7 @@ HTML_TEMPLATE = """
                 datasets: [{
                     label: 'CPU Usage',
                     data: [],
-                    borderColor: 'rgb(75, 192, 192)',
+                    borderColor: 'rgb(255, 158, 100)',
                     tension: 0.1
                 }]
             },
@@ -190,8 +256,8 @@ def get_system_info():
         'cpu_load': cpu_load,
         'memory': {
             'percent': memory.percent,
-            'used': round(memory.used / (1024 * 1024)),
-            'total': round(memory.total / (1024 * 1024))
+            'used': round(memory.used / (1024 * 1024 * 1024), 1),
+            'total': round(memory.total / (1024 * 1024 * 1024), 1)
         },
         'disk': {
             'percent': disk.percent,
@@ -201,7 +267,8 @@ def get_system_info():
         'network': {
             'bytes_recv': round(network.bytes_recv / (1024 * 1024), 2),
             'bytes_sent': round(network.bytes_sent / (1024 * 1024), 2)
-        }
+        },
+        'network_info': psutil.net_if_addrs().get('eth0', [{}])[0].get('address', 'N/A')
     }
 
 def run_flask():
