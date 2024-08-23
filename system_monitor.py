@@ -11,7 +11,7 @@ HTML_TEMPLATE = """
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Enhanced Real-time System Monitor</title>
+    <title>System Monitor</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.7.0/chart.min.js"></script>
     <style>
@@ -102,7 +102,7 @@ HTML_TEMPLATE = """
     </style>
 </head>
 <body>
-    <h1>Enhanced Real-time System Monitor</h1>
+    <h1>System Monitor</h1>
     
     <div id="deviceInfo">
         <h2>Server Specifications</h2>
